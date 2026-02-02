@@ -24,8 +24,6 @@ export default function Customerview() {
     try {
       setLoading(true);
 
-      // NOTE:
-      // you should ideally pass page & limit to backend
       const res = await fetch(
         `http://localhost:5000/api/order/all?page=${page}&limit=${limit}`,
         {
