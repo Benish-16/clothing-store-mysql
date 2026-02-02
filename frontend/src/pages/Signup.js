@@ -1,6 +1,7 @@
 import React ,{useState,useContext} from 'react';
 import alertContext from "../context/alert/alertContext";
 import { useNavigate} from "react-router-dom";
+import { validatePassword } from "../utils/validatePassword";
 export default function Signup() {
       const { showAlert } = useContext(alertContext);
     const navigate = useNavigate();
@@ -10,6 +11,9 @@ export default function Signup() {
          name:"",
          cpassword:""
        });
+  const [passwordErrors, setPasswordErrors] = useState([]);
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 const { name, email, password, cpassword } = credentials;
@@ -39,7 +43,7 @@ navigate('/')
  
 }
     else{
-
+ showAlert(json.error, 'danger');
     }
   };
    const onChange = (e) => {
@@ -48,7 +52,8 @@ navigate('/')
 
 
     return (
-    <section className="vh-100 gradient-custom">
+    <form className="vh-100 gradient-custom" onSubmit={handleSubmit}>
+
       <div className="container py-5 h-100">
         <div className="row d-flex justify-content-center align-items-center h-100">
           <div className="col-12 col-md-8 col-lg-6 col-xl-5">
@@ -89,15 +94,29 @@ navigate('/')
 
                
                   <div data-mdb-input-init className="form-outline form-white mb-4">
-                    <input 
-                      type="password" 
-                      id="password" 
-                          name="password"
-                      className="form-control form-control-lg" 
-                      placeholder="Password" 
-                         value={credentials.password}
-                           onChange={onChange}
-                    />
+                <input 
+  type="password" 
+  id="password" 
+  name="password"
+  className="form-control form-control-lg" 
+  placeholder="Password" 
+  value={credentials.password}
+  onChange={(e) => {
+    onChange(e);
+    const errors = validatePassword(e.target.value);
+    setPasswordErrors(errors);
+  }}
+/>
+{passwordErrors.length > 0 && (
+  <div className="text-start mb-3">
+    {passwordErrors.map((err, index) => (
+      <small key={index} className="text-danger d-block">
+        • {err}
+      </small>
+    ))}
+  </div>
+)}
+
                   </div>
 
                
@@ -119,7 +138,7 @@ navigate('/')
                     data-mdb-ripple-init 
                     className="btn btn-outline-light btn-lg px-5" 
                     type="submit"
-                    onClick={handleSubmit}
+                  
                   >
                     Sign Up
                   </button>
@@ -144,6 +163,6 @@ navigate('/')
           </div>
         </div>
       </div>
-    </section>
+    </form>
   );
 }

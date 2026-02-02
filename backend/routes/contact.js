@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const Contact = require("../models/Contact");
+const { pool } = require("../db");
 const { body, validationResult } = require("express-validator");
 const fetchuser = require("../middleware/fetchuser");
-const User = require('../models/User');
-const sendEmail = require('../Emailsend');
+const sendEmail = require("../Emailsend");
+   const { getPagination } = require("../utils/pagination");
+
 
 
 router.post(
@@ -23,110 +24,132 @@ router.post(
 
       const { fullname, email, phone, message } = req.body;
 
-      const contact = new Contact({
-        fullname,
-        email,
-        phone,
-        message,
+      await pool.execute(
+        "CALL add_contact(?,?,?,?)",
+        [fullname, email, phone, message]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Message sent successfully",
       });
-
-      await contact.save();
-
-      res.status(201).json({ success: true, message: "Message sent successfully" });
     } catch (err) {
       console.error(err);
       res.status(500).json({ success: false, message: "Server error" });
     }
   }
 );
+
+
+
 router.get("/admin/messages", fetchuser, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
 
-    if (!user || !user.admin) {
+    const { page, limit } = req.query;
+
+    const { pageNumber, pageSize, offset } = getPagination(page, limit);
+
+    const [users] = await pool.execute(
+      "SELECT is_admin FROM users WHERE user_id = ?",
+          [req.user_id] 
+    );
+
+   
+    if (!users.length || users[0].is_admin !== 1) {
       return res.status(403).json({ error: "Admin access only" });
     }
 
-    const messages = await Contact.find().sort({ createdAt: -1 });
-    res.json({ success: true, messages });
+       const [rows] = await pool.execute(
+      "CALL get_all_contacts(?, ?)",
+      [limit, offset]
+    );
+        const total = rows[1][0].total;
+      const [replies] = await pool.execute("SELECT * FROM contact_replies");
+      const contacts = rows[0]; 
+        const messagesWithReplies = contacts.map(msg => {
+      const msgReplies = replies.filter(r => r.contact_id === msg.id);
+      return { ...msg, replies: msgReplies };
+    });
+
+
+    res.json({
+      success: true,
+       messages: messagesWithReplies,
+        pagination: {
+        page: pageNumber,
+        limit: pageSize,
+        totalItems: total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (error) {
     console.error("Error fetching admin messages:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-router.get("/admin/messages", fetchuser, async (req, res) => {
+
+
+router.post("/admin/messages/reply/:id", fetchuser, async (req, res) => {
   try {
+    const { reply } = req.body;
+    const contactId = req.params.id;
 
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-
-    if (!user.admin) {
-      return res.status(403).json({ error: "Admin access only" });
-    }
+   const [users] = await pool.execute(
+      "SELECT is_admin FROM users WHERE user_id = ?",
+          [req.user_id] 
+    );
 
    
-    const messages = await Contact.find().sort({ createdAt: -1 });
+   
 
-  
-    res.json({ success: true, messages });
-  } catch (error) {
-    console.error("Error fetching admin messages:", error);  
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-router.post("/admin/messages/reply/:id", fetchuser, async (req, res) => {
-  const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-
-    if (!user.admin) {
+    if (!users.length || users[0].is_admin !== 1) {
       return res.status(403).json({ error: "Admin access only" });
     }
 
+ 
+    const [contacts] = await pool.execute(
+      "SELECT fullname, email, message FROM contacts WHERE id = ?",
+      [contactId]
+    );
 
-  const { reply } = req.body;
+    if (!contacts.length) {
+      return res.status(404).json({ error: "Contact not found" });
+    }
 
-  const contact = await Contact.findById(req.params.id);
-  if (!contact) return res.status(404).json({ msg: "Contact not found" });
+    const contact = contacts[0];
 
-  contact.replies.push({
-    message: reply,
-    repliedBy: "Admin",
-  });
-  await contact.save();
+    
+    await pool.execute(
+      "CALL reply_to_contact(?, ?)",
+      [contactId, reply]
+    );
 
-  const htmlContent = `
-    <h3>Hi ${contact.fullname},</h3>
-    <p>This is a reply to your message:</p>
-    <blockquote style="border-left: 4px solid #ccc; padding-left: 10px;">
-      ${contact.message}
-    </blockquote>
-    <p><strong>Admin Reply:</strong></p>
-    <blockquote style="border-left: 4px solid #000; padding-left: 10px; background: #f4f4f4;">
-      ${reply}
-    </blockquote>
-    <p>Thank you!</p>
-  `;
 
-  await sendEmail(
-    contact.email,
-    "Reply to your message",
-    "You have a new reply from admin",
-    htmlContent
-  );
+    const htmlContent = `
+      <h3>Hi ${contact.fullname},</h3>
+      <p><strong>Your message:</strong></p>
+      <blockquote>${contact.message}</blockquote>
+      <p><strong>Admin reply:</strong></p>
+      <blockquote>${reply}</blockquote>
+      <p>Thank you!</p>
+    `;
 
-  res.json({ success: true });
+    await sendEmail(
+      contact.email,
+      "Reply to your message",
+      "Admin reply",
+      htmlContent
+    );
+
+    res.json({
+      success: true,
+      message: "Reply sent successfully",
+    });
+  } catch (error) {
+    console.error("Error replying to contact:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 module.exports = router;

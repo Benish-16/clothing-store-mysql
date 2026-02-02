@@ -1,56 +1,56 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { pool } = require('../db');
 const { body, validationResult } = require('express-validator');
-const Otp = require('../models/otpmodel');
 const sendEmail = require('../Emailsend');
+const JWT_SECRET = process.env.JWT_SECRET || "mySuperSecretKey";
 
-const JWT_SECRET = "mySuperSecretKey";
-router.post(
-    '/createuser',[
-        body('email', 'Enter a valid email').isEmail(),
-    body('name', 'Enter a valid name').isLength({ min: 3 }),
-    body('password', 'Enter a valid password').exists(),
- body('admin')
-  .optional()
-  .isBoolean()
+router.post('/createuser', async (req, res) => {
+  const { name, email, password, admin } = req.body;
 
 
-    ],
-      async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    try {
-      let user = await User.findOne({ email: req.body.email });
-      if (user) {
-        return res.status(400).json({ error: "User with this email already exists" });
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      const secPass = await bcrypt.hash(req.body.password, salt);
-
-      user = await User.create({
-        name: req.body.name,
-        email: req.body.email,
-        password: secPass,
-        admin: req.body.admin || false 
-      });
-
-      const payload = { user: { id: user.id } };
-      const authToken = jwt.sign(payload, JWT_SECRET);
-
-      res.json({ success: true, authToken });
-    } catch (err) {
-      console.error(err);
-      res.status(500).send('Server Error');
-    }
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Name, email, and password are required' });
   }
-);
+
+  try {
+  
+    await pool.execute('CALL create_user(?,?,?,?)', [
+      name,
+      email,
+      password,      
+      admin || 0
+    ]);
+
+     const [users] = await pool.execute('SELECT user_id, name, email, is_admin FROM users WHERE email = ?', [email]);
+    const user = users[0];
+
+    if (!user) {
+      return res.status(500).json({ error: 'User creation failed' });
+    }
+
+   
+    const payload = { user_id: user.user_id };
+    const authToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+    res.status(201).json({ success: true, authToken });
+
+  } catch (err) {
+    console.error(err);
+
+
+    if (err.sqlState === '45000') {
+      return res.status(400).json({ error: err.message });
+    }
+
+  
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
 
 router.post(
   '/login',
@@ -67,34 +67,31 @@ router.post(
     const { email, password } = req.body;
 
     try {
-      let user = await User.findOne({ email });
-      if (!user) {
-        return res.status(400).json({ error: "Please try to login with correct credentials" });
-      }
+         const [rows] = await pool.execute('CALL login_user(?, ?)', [email, password]);
 
-      const passwordCompare = await bcrypt.compare(password, user.password);
-      if (!passwordCompare) {
-        return res.status(400).json({ error: "Please try to login with correct credentials" });
-      }
+   
+      const user = rows[0][0]; 
+          const payload = { user_id: user.user_id };
 
-      const payload = { user: { id: user.id } };
+
       const authToken = jwt.sign(payload, JWT_SECRET);
 
       res.json({ success: true, authToken , user: {
-    id: user._id,
+    id: user.user_id,
     name: user.name,
     email: user.email,
-    admin: user.admin 
+     admin: user.is_admin 
   }});
     } catch (err) {
-      console.error(err);
+    if (err.sqlState === '45000') {
+        return res.status(400).json({ error: err.message });
+      }
       res.status(500).send('Server Error');
     }
   }
 
   
 );
-//forgetpassword
 router.post(
   '/forgotpassword',
   [
@@ -103,19 +100,21 @@ router.post(
   ],async(req,res)=>{
   const {email}=req.body;
   try{
-const user=await User.findOne({email});
-  if (!user) {
-        return res.status(400).json({ error: "Please try to login with correct credentials" });
-      }
+const [users]=await pool.execute('SELECT user_id FROM users WHERE email=?',[email]);
+ if (users.length === 0) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+  
       const otp=Math.floor(Math.random()*999999);
-      const newOpt= new Otp({
-email,
-otp
-        });
-        await newOpt.save();
-        const message=`Your verification code for password reset id ${otp} `;
-        await sendEmail(email,"Reset Password",message);
-        res.status(200).json({message:"otp send to your email"});
+    
+     
+    await pool.execute('CALL store_otp(?, ?)', [email, otp]);
+
+    await sendEmail(email, "Reset Password", `Your OTP is ${otp}`);
+
+    res.json({ message: "OTP sent to your email" });
+      
 }
  catch(error){
   console.error("Forgot Password Error:", error);
@@ -124,85 +123,37 @@ otp
 
 });
 
-router.post(
-  '/verify-otp',
-  [
-    body('email', 'Enter a valid email').isEmail(),
-    body('otp', 'OTP is required').isNumeric()
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+router.post('/verify-otp', async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    await pool.execute('CALL verify_otp(?, ?)', [email, otp]);
+    res.json({ message: "OTP verified successfully" });
+  } catch (err) {
+    if (err.sqlState === '45000') {
+      return res.status(400).json({ error: err.message });
     }
-
-    const { email, otp } = req.body;
-
-    try {
-      const otpRecord = await Otp.findOne({ email, otp });
-
-      if (
-        !otpRecord ||
-        Date.now() > otpRecord.createdAt.getTime() + 10 * 60 * 1000
-      ) {
-        return res.status(400).json({ error: "Invalid or expired OTP" });
-      }
-
-      res.status(200).json({ message: "OTP verified successfully" });
-    } catch (error) {
-      res.status(500).json({ success: false, message: "Internal server error" });
-    }
+    res.status(500).json({ error: "Server error" });
   }
-);
+});
 
-router.post(
-  '/reset-password',
-  [
-    body('email', 'Enter a valid email').isEmail(),
-    body('otp', 'OTP is required').isNumeric(),
-    body('newPassword', 'Password must be at least 6 characters').isLength({ min: 6 })
-  ],
-  async (req, res) => {
+router.post('/reset-password', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+  try {
+    await pool.execute(
+      'CALL reset_password(?, ?, ?)',
+      [email, otp, newPassword]
+    );
+
+    res.json({ message: "Password reset successfully" });
+
+  } catch (err) {
+    if (err.sqlState === '45000') {
+      return res.status(400).json({ error: err.message });
     }
-
-    const { email, otp, newPassword } = req.body;
-
-    try {
-      const otpRecord = await Otp.findOne({
-        email,
-        otp: Number(otp)
-      });
-
-      if (
-        !otpRecord ||
-        Date.now() > otpRecord.createdAt.getTime() + 10 * 60 * 1000
-      ) {
-        return res.status(400).json({ error: "Invalid or expired OTP" });
-      }
-
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(400).json({ error: "User not found" });
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(newPassword, salt);
-      await user.save();
-
-      await Otp.deleteMany({ email });
-
-      res.status(200).json({ message: "Password reset successfully" });
-
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ success: false, message: "Internal server error" });
-    }
+    res.status(500).json({ error: "Server error" });
   }
-);
-
+});
 
 module.exports = router;

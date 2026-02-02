@@ -60,7 +60,8 @@ const handleSubmit = async (e) => {
 };
 
   return (
-    <div className="d-flex justify-content-center my-3 px-2">
+         <main className="main mt-5">
+    <div className="d-flex justify-content-center my-3 ">
       <form
         onSubmit={handleSubmit}
         className="p-3 border rounded shadow-sm w-100"
@@ -76,6 +77,7 @@ const handleSubmit = async (e) => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+             minLength={3}
           />
         </div>
 
@@ -87,6 +89,7 @@ const handleSubmit = async (e) => {
             onChange={(e) => setDescription(e.target.value)}
             required
             rows={2}
+            minLength={15}
           />
         </div>
 
@@ -163,5 +166,6 @@ const handleSubmit = async (e) => {
         </button>
       </form>
     </div>
+    </main>
   );
 }

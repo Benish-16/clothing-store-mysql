@@ -6,6 +6,9 @@ import authContext from "../context/auth/authContext";
 import { useNavigate } from "react-router-dom";
 
 export default function ProductItemsPage() {
+      const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const limit = 6;
       const navigate = useNavigate();
   const { user } = useContext(authContext);
   const { category, type } = useParams();
@@ -15,12 +18,13 @@ export default function ProductItemsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch(
-        `http://localhost:5000/api/product/fetchproduct?category=${category}&type=${type}`
-        );
+       const res = await fetch(
+  `http://localhost:5000/api/product/fetchproduct?category=${category}&type=${type}&page=${page}&limit=${limit}`
+);
         const data = await res.json();
         if (data.success) {
           setProducts(data.products);
+              setTotalPages(data.pagination.totalPages);
         }
       } catch (err) {
         console.error(err);
@@ -30,7 +34,7 @@ export default function ProductItemsPage() {
     };
 
     fetchProducts();
-  }, [category, type]);
+  }, [category, type,page]);
   
   const handleDelete = (id) => {
   setProducts(product => product.filter(p => p._id !== id));
@@ -63,7 +67,7 @@ const Wrapper = user?.admin? "main" : "div";
         />
       ))}
     </div>
-     {user?.admin === true && (
+     {user?.admin === 1 && (
       <div className="d-flex justify-content-end mb-4">
         <button
           className="btn btn-dark d-flex align-items-center gap-2"
@@ -74,6 +78,28 @@ const Wrapper = user?.admin? "main" : "div";
         </button>
       </div>
     )}
+     <div className="d-flex justify-content-center align-items-center mt-3 gap-3">
+  <button
+    className="btn btn-outline-dark"
+    onClick={() => setPage((p) => Math.max(1, p - 1))}
+    disabled={page === 1}
+  >
+    &laquo; Previous
+  </button>
+
+  <span className="fw-bold">
+    Page {page} of {totalPages}
+  </span>
+
+  <button
+    className="btn btn-outline-dark"
+    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+    disabled={page === totalPages}
+  >
+    Next &raquo;
+  </button>
+</div>
+
   </Wrapper>
  
 );

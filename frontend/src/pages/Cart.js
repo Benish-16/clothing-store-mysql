@@ -13,11 +13,12 @@ const [shipping, setShipping] = React.useState(5);
     0
   );
 const add=( item,qty)=>{
+  console.log("id",item.product_id);
   const cartItem = {
-    productId: item.product._id,
-    color: item.variant.color,
+    productId: item.product_id,
+    color: item.variant_color,
     size: item.size,
-    image: item.variant.image,
+    image: item.variant_image,
     quantity: qty,
     price: item.price,
  
@@ -54,12 +55,12 @@ const add=( item,qty)=>{
                       )}
 
                       {cartItems.map((item) => (
-                        <div key={item._id}>
+                        <div key={item.id}>
                           <div className="row align-items-center gy-3 mb-4">
                     
                             <div className="col-md-2 col-4">
                               <img
-                                src={item.variant.image}
+                                src={item.variant_image}
                                 alt={item.name}
                                 className="img-fluid rounded"
                                 style={{
@@ -72,7 +73,7 @@ const add=( item,qty)=>{
                             <div className="col-md-3 col-8">
                               <h6 className="mb-1">{item.name}</h6>
                               <small className="text-muted">
-                                Color: {item.variant.color}
+                                Color: {item.variant_color}
                               </small>
                               <br />
                               <small className="text-muted">

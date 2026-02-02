@@ -2,7 +2,13 @@
   font-family: "Inter", Arial, sans-serif;
   display: flex;
   align-items: center;
+
   position: fixed;
+  top: 0;              /* 🔥 REQUIRED */
+  left: 0;             /* 🔥 REQUIRED */
+  width: 100%;         /* 🔥 REQUIRED */
+  height: 72px;
+  z-index: 1050;       /* stay above content */
 }
 
 .navbar-nav.flex-row {
@@ -120,5 +126,5 @@
   background: #e0e7ff;
 }
 body {
-  padding-top: 72px;
+  padding-top: 30px; /* MUST match navbar height */
 }

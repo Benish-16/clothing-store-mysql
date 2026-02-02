@@ -36,7 +36,7 @@ export default function VerifyOtp({ email, setStep, setOtpf }) {
         setOtpf(finalOtp);
         setStep(3);
       } else {
-        showAlert("Invalid OTP", "danger");
+        showAlert(data.error, "danger");
       }
     } catch (err) {
       console.error(err);

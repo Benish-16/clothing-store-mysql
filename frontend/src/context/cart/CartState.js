@@ -39,14 +39,14 @@ export const CartProvider = ({ children }) => {
         fetchCart(); 
       const data = await res.json();
       if (data.success) {
-        setCartItems(data.cart.items); 
+     
       }
     } catch (err) {
       console.error(err);
     }
   };
  const removeFromCart = async (item ) => {
-    console.log( item.product._id,item.variant.color, item.size);
+    console.log( item.product_id,item.variant_color, item.size);
     try {
       const res = await fetch("http://localhost:5000/api/cart/removecart", {
         method: "DELETE",
@@ -55,8 +55,8 @@ export const CartProvider = ({ children }) => {
           "auth-token": localStorage.getItem("token"),
         },
           body: JSON.stringify({
-        productId: item.product._id,  
-        color: item.variant.color,
+        productId: item.product_id,  
+        color: item.variant_color,
         size: item.size,
         quantity:item.qunatity
       }),
@@ -66,7 +66,7 @@ export const CartProvider = ({ children }) => {
         fetchCart(); 
       const data = await res.json();
       if (data.success) {
-        setCartItems(data.cart.items); 
+     
       }
     } catch (err) {
       console.error(err);

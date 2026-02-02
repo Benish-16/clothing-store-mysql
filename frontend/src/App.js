@@ -3,11 +3,11 @@ import './App.css';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Product from './components/Product';
+import Product from './ProductComponents/Product';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { womenCategories, menCategories } from './data/categories';
-import ProductItem from './components/ProductItem';
-import ProductItemsPage from './pages/ProductItemsPage';
+import ProductItem from './ProductComponents/ProductItem';
+import ProductItemsPage from './ProductComponents/ProductItemsPage';
 import ForgotPasswordFlow from './components/ForgotPasswordFlow';
 
 import  { useContext, useState } from "react";
@@ -34,19 +34,23 @@ import Footer from './components/Footer';
 import Home from './components/Home';
 import authContext from "./context/auth/authContext";
 import EditType from './admin/EditType';
+import Sidebar from './admin/Sidebar';
+import ProductDetail from './ProductComponents/ProductDetail';
 function AppContent() {
   const { user } = useContext(authContext);
 
   return (
     <>
-      <Navbar />
-      <Alert/>
+      {!user?.admin && <Navbar /> }
+      <Alert/>     {user?.admin && <Sidebar />}
       <div className="main-content">
         <Routes>
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/women" element={<Product category="women" />} />
      <Route path="/edittype/:id" element={<EditType />} />
+     <Route path="/product/:id" element={<ProductDetail></ProductDetail>} />
+
        
         <Route path="/men" element={<Product category="Men"   />} />
       <Route path="/product/:category/:type" element={<ProductItemsPage/>} />

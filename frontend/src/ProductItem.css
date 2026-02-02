@@ -1,0 +1,92 @@
+/* Card hover */
+.product-card {
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Image hover zoom */
+.product-img {
+  transition: transform 0.2s;
+}
+
+.product-card:hover .product-img {
+  transform: scale(1.01);
+}
+
+/* Hover icons */
+.product-icons {
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  transition: opacity 0.3s;
+  border-radius: 0.5rem;
+}
+
+.product-card:hover .product-icons {
+  opacity: 1;
+}
+
+.product-icons span {
+  font-size: 16px;
+  padding: 8px;
+  background: #fff;
+  color: #333;
+  border-radius: 50%;
+  margin: 0 5px;
+  transition: background 0.3s, color 0.3s;
+}
+
+.product-icons span:hover {
+  background: #333;
+  color: #fff;
+}
+
+
+.color-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: transform 0.2s, border 0.2s;
+}
+
+.color-circle:hover {
+  transform: scale(1.2);
+  border: 2px solid #333;
+}
+
+.size-box {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.size-box:hover {
+  background-color: #333;
+  color: #fff;
+}
+.desc-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.desc-expanded {
+  display: block;
+  overflow: visible;
+}
+.product-img {
+  height: 290px;         
+
+}

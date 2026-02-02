@@ -11,6 +11,7 @@ export default function ProductDetail() {
     const location = useLocation();
 
   const { id } = useParams();
+  console.log(id);
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { user } = useContext(authContext);
@@ -25,7 +26,7 @@ export default function ProductDetail() {
     fetch(`http://localhost:5000/api/product/${id}`)
       .then((res) => res.json())
       .then((data) => {
-        setProduct(data);
+        setProduct(data.product);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -52,7 +53,34 @@ export default function ProductDetail() {
       </div>
     );
   }
+const handleAddToCart = async () => {
+  if (!selectedVariant || !selectedSize) return;
 
+    const cartItem = {
+    productId: product.id,
+    color: selectedVariant.color,
+    size: selectedSize,
+    image: selectedVariant.images,
+    quantity: 1,
+    price: product.price,
+ 
+  };
+
+    addToCart(cartItem, 1);
+ 
+  const updatedVariant = {
+    ...selectedVariant,
+    sizes: selectedVariant.sizes.map(s =>
+      s.size === selectedSize
+        ? { ...s, quantity: s.quantity - 1 }
+        : s
+    )
+  };
+
+  setSelectedVariant(updatedVariant);
+  
+
+};
 const handleDelete = async (productId) => {
   
   const token = localStorage.getItem("token");
@@ -102,7 +130,7 @@ const handleDelete = async (productId) => {
 const Wrapper = user?.admin? "main" : "div";
  
 
-const wrapperProps = user?.admin
+const wrapperProps = user?.admin==1
   ? { className: "main"  ,style: { maxWidth: "1200px" }}
   : {
       className: "container py-4 fade-in",
@@ -128,7 +156,7 @@ const wrapperProps = user?.admin
             />
 
          
-            {user?.admin && (
+            {(!user?.admin) == 0 && (
               <div className="admin-actions">
                 <button
                   className="admin-action-btn"
@@ -162,7 +190,7 @@ const wrapperProps = user?.admin
         <div className="col-lg-6 ">
           <div className="d-flex flex-column h-100">
          
-            {user?.admin && (
+            {(user?.admin)==1 && (
               <span className="admin-badge">
                 <i className="bi bi-shield-check"></i>
                 ADMIN VIEW
@@ -249,20 +277,12 @@ const wrapperProps = user?.admin
             )}
 
          
-            {!user?.admin && (
+            {!user?.admin ==1 && (
               <div className="mt-auto">
                 <button
                   className="add-to-cart-btn"
                   disabled={!selectedVariant || !selectedSize || selectedStock === 0}
-                  onClick={() =>
-                    addToCart({
-                      productId: product._id,
-                      color: selectedVariant.color,
-                      size: selectedSize,
-                      quantity: 1,
-                      price: product.price,
-                    })
-                  }
+                  onClick={handleAddToCart}
                 >
                   <i className="bi bi-bag-plus-fill" style={{ fontSize: '1.2rem' }}></i>
                   <span>Add to Cart</span>

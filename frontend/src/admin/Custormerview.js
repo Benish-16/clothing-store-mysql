@@ -7,27 +7,61 @@ const STATUS_CLASSES = {
 };
 
 export default function Customerview() {
+  const [page, setPage] = useState(1);
+const [totalPages, setTotalPages] = useState(1);
+const limit = 10;
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
 
   const token = localStorage.getItem("token");
+const fetchOrders = async () => {
+  try {
+    setLoading(true);
+    const res = await fetch("http://localhost:5000/api/order/all");
+    const data = await res.json();
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("http://localhost:5000/api/order/all");
-      const data = await res.json();
-      if (data.success) setOrders(data.orders);
-      else setOrders([]);
-    } catch (err) {
-      console.error("Fetch orders error:", err);
+    if (data.success) {
+    
+      const ordersMap = {};
+      data.orders.forEach((row) => {
+        if (!ordersMap[row.order_id]) {
+          ordersMap[row.order_id] = {
+            _id: row.order_id,
+            first_name: row.first_name,
+            last_name: row.last_name,
+            email: row.email,
+            phone: row.phone,
+            total: row.total,
+            orderStatus: row.order_status,
+            cartItems: [],
+          };
+        }
+        if (row.item_id) {
+          ordersMap[row.order_id].cartItems.push({
+            id: row.item_id,
+            name: row.item_name,
+            variant: { color: row.variant_color },
+            size: row.size,
+            quantity: row.quantity,
+          });
+        }
+      });
+
+      setOrders(Object.values(ordersMap));
+      setTotalPages(data.pagination.totalPages);
+    } else {
       setOrders([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error("Fetch orders error:", err);
+    setOrders([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchOrders();
@@ -58,9 +92,9 @@ export default function Customerview() {
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      order.customer.firstName.toLowerCase().includes(search.toLowerCase()) ||
-      order.customer.lastName.toLowerCase().includes(search.toLowerCase()) ||
-      order.customer.email.toLowerCase().includes(search.toLowerCase());
+      order.first_name.toLowerCase().includes(search.toLowerCase()) ||
+      order.last_name.toLowerCase().includes(search.toLowerCase()) ||
+      order.email.toLowerCase().includes(search.toLowerCase());
 
     const matchesStatus =
       filterStatus === "All" || order.orderStatus === filterStatus;
@@ -69,8 +103,8 @@ export default function Customerview() {
   });
 
   return (
-    <div className="container mt-5">
-      <h2 className="mb-4 text-center">Admin Orders Dashboard</h2>
+    <main className="main ">
+      <h2 className="text-center">Admin Orders Dashboard</h2>
 
       <div className="row mb-3">
         <div className="col-md-6 mb-2">
@@ -128,10 +162,10 @@ export default function Customerview() {
               {filteredOrders.map((order) => (
                 <tr key={order._id}>
                   <td>
-                    {order.customer.firstName} {order.customer.lastName}
+                    {order.first_name} {order.last_name}
                   </td>
-                  <td>{order.customer.email}</td>
-                  <td>{order.customer.phone}</td>
+                  <td>{order.email}</td>
+                  <td>{order.phone}</td>
                   <td>
                     {order.cartItems.map((item, idx) => (
                       <div key={idx}>
@@ -161,8 +195,30 @@ export default function Customerview() {
               ))}
             </tbody>
           </table>
+    <div className="d-flex justify-content-center align-items-center mt-3 gap-3">
+  <button
+    className="btn btn-outline-dark"
+    onClick={() => setPage((p) => Math.max(1, p - 1))}
+    disabled={page === 1}
+  >
+    &laquo; Previous
+  </button>
+
+  <span className="fw-bold">
+    Page {page} of {totalPages}
+  </span>
+
+  <button
+    className="btn btn-outline-dark"
+    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+    disabled={page === totalPages}
+  >
+    Next &raquo;
+  </button>
+</div>
+
         </div>
       )}
-    </div>
+    </main>
   );
 }

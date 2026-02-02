@@ -59,6 +59,7 @@ export default function AddType() {
   };
 
   return (
+         <main className="main mt-5">
     <div className="container my-4 px-2">
       <div className="row justify-content-center">
         <div className="col-12 col-sm-10 col-md-8 col-lg-6">
@@ -114,5 +115,6 @@ export default function AddType() {
         </div>
       </div>
     </div>
+        </main>
   );
 }

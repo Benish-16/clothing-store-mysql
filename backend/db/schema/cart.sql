@@ -1,0 +1,21 @@
+CREATE TABLE carts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE cart_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cart_id INT NOT NULL,
+    product_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    variant_color VARCHAR(100) NOT NULL,
+    variant_image VARCHAR(255) NOT NULL,
+    size VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL DEFAULT 1 CHECK (quantity >= 1),
+    price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);

@@ -1,32 +1,34 @@
 const express = require("express");
 const router = express.Router();
-const Subscription = require("../models/Subscription");
-
+const { pool } = require("../db");
 
 router.post("/sent", async (req, res) => {
   try {
     const { email } = req.body;
 
-   
     if (!email) {
       return res.status(400).json({ success: false, msg: "Email is required" });
     }
 
+    const connection = await pool.getConnection();
+    try {
+ 
+      await connection.query("CALL AddSubscription(?)", [email]);
 
-    const existing = await Subscription.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ success: false, msg: "Email already subscribed" });
+      res.status(201).json({
+        success: true,
+        msg: "Subscribed successfully",
+        email,
+      });
+    } catch (err) {
+    
+      if (err.sqlState === "45000") {
+        return res.status(400).json({ success: false, msg: err.sqlMessage });
+      }
+      throw err;
+    } finally {
+      connection.release();
     }
-
-
-    const subscription = new Subscription({ email });
-    await subscription.save();
-
-    res.status(201).json({
-      success: true,
-      msg: "Subscribed successfully",
-      email: subscription.email
-    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, msg: "Server error" });

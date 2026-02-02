@@ -24,7 +24,7 @@ export default function ForgotPassword({ setStep, setEmail}) {
       setStep(2);
    showAlert("Otp send to your mail",'success');
     } else {
-         showAlert("something went wrong",'danger');
+         showAlert(data.error,'danger');
     }
   };
 

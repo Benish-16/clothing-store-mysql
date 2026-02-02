@@ -1,8 +1,9 @@
-import React from "react";
+import React,{useState} from "react";
 import "../ProductItem.css";
 import { useNavigate } from "react-router-dom";
 
 export default function ProductItem({ product,onDelete  }) {
+
   const navigate = useNavigate();
 
   if (!product) return null;
@@ -15,7 +16,7 @@ export default function ProductItem({ product,onDelete  }) {
       <div
         className="card product-card border-0 shadow-sm"
         style={{ cursor: "pointer" }}
-        onClick={() =>navigate(`/product/${product._id}` )
+        onClick={() =>navigate(`/product/${product.id}` )
 }
       >
         <img

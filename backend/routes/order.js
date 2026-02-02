@@ -1,58 +1,87 @@
 const express = require("express");
 const router = express.Router();
 const fetchuser = require("../middleware/fetchuser");
-const Order = require("../models/Order");
-const Cart = require("../models/Cart");
-const { body, validationResult } = require("express-validator");
-
-const orderOtp = require('../models/orderotp');
 
 const sendEmail = require('../Emailsend');
+const { pool } = require('../db');
 
+const { body, validationResult } = require("express-validator");
+const { getPagination } = require("../utils/pagination");
 
 router.post("/create", fetchuser, async (req, res) => {
   try {
-    const {  customer, cartItems, subtotal, shippingCost, deliveryType, total, paymentMethod } = req.body;
-const email = customer?.email;
+    const { customer, cartItems, subtotal, shippingCost, deliveryType, total, paymentMethod } = req.body;
 
-if (!email) {
-  return res.status(400).json({ success: false, message: "Email missing" });
-}
-
-await orderOtp.deleteMany({ email });
     if (!cartItems || cartItems.length === 0)
       return res.status(400).json({ success: false, message: "Cart is empty" });
 
-  
-    const order = new Order({
-      userId: req.user.id,   
-      customer,
-      cartItems,
-      subtotal,
-      shippingCost,
-      deliveryType,
-      total,
-      paymentMethod,
-      paymentStatus: "Done",
-      orderStatus: "Pending"
-    });
-    console.log(order);
+    const { firstName, lastName, email, phone, address, apartment, city, state, pin, country } = customer;
 
-   
-    await order.save();
-await Cart.deleteOne({ user: req.user.id});
-  
 
- 
-    await Cart.findOneAndUpdate({ user: req.user.id }, { items: [] });
+    const [result] = await pool.execute(
+      `CALL create_order(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        req.user_id,
+        firstName,
+        lastName,
+        email,
+        phone,
+        address,
+        apartment,
+        city,
+        state,
+        pin,
+        country || "India",
+        subtotal,
+        shippingCost,
+        deliveryType,
+        total,
+        paymentMethod || "Card"
+      ]
+    );
+console.log("CALL create_order params:", [
+  req.user_id,
+  firstName, lastName, email, phone, address, apartment, city, state, pin, country, subtotal, shippingCost, deliveryType, total, paymentMethod
+]);
 
-    res.status(201).json({ success: true, message: "Order placed successfully", order });
-  } catch (error) {
-    console.error("CREATE ORDER ERROR:", error);
+    
+const orderId = result[0][0].order_id;
+
+
+
+    for (let item of cartItems) {
+        console.log( "hi",orderId,
+       item.product_id,
+          item.name,
+          item.variant_color,
+          item.variant_image,
+          item.size,
+          item.quantity,
+          item.price);
+      await pool.execute(
+        `CALL add_order_item(?,?,?,?,?,?,?,?)`,
+        [
+          orderId,
+       item.product_id,
+          item.name,
+          item.variant_color,
+          item.variant_image,
+          item.size,
+          item.quantity,
+          item.price
+        ]
+      );
+    }
+
+    
+    await pool.execute(`DELETE FROM cart_items WHERE cart_id = (SELECT id FROM carts WHERE user_id = ?)`, [req.user_id]);
+
+    res.status(201).json({ success: true, message: "Order placed successfully", orderId });
+  } catch (err) {
+    console.error("CREATE ORDER ERROR:", err);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
-
 
 router.post(
   '/sendotp',
@@ -61,16 +90,18 @@ router.post(
   
   ],async(req,res)=>{
   const {email}=req.body;
+      console.log("SEND OTP HIT");
+  console.log("BODY:", req.body);
   try{
 
       const otp=Math.floor(Math.random()*999999);
-      const newOpt= new orderOtp({
-email,
-otp
-        });
-        await newOpt.save();
+     console.log("OTP GENERATED:", otp);
+  
+     await pool.execute('CALL store_otp_order(?, ?)', [email, otp]);
+   
         const message=`Your verification code for confirmation id ${otp} `;
-        await sendEmail(email,"Reset Password",message);
+        await sendEmail(email,"Confirmation",message);
+     console.log("EMAIL SENT");
         res.status(200).json({message:"otp send to your email"});
 }
  catch(error){
@@ -79,6 +110,7 @@ otp
 }
 
 });
+
 router.post(
   '/verify-otp',
   [
@@ -96,15 +128,7 @@ router.post(
     const otp = Number(req.body.otp); 
   console.log("Verify OTP request:", { email, otp });
     try {
- const otpRecord = await orderOtp.findOne({ email, otp });
-
-      if (
-        !otpRecord ||
-        Date.now() > otpRecord.createdAt.getTime() + 10 * 60 * 1000
-      ) {
-        res.status(200).json({ success: true, message: "OTP verified successfully" });
-
-      }
+   await pool.execute("CALL verify_otp_order(?, ?)", [email, otp]);
 
       res.status(200).json({ success: true, message: "OTP verified successfully" });
 
@@ -144,10 +168,10 @@ cartItems.forEach(item => {
   htmlContent += `
     <tr>
       <td style="padding:8px;">
-        <img src="${item.variant.image}" width="50" style="vertical-align:middle; margin-right:10px;" />
+        <img src="${item.variant_image}" width="50" style="vertical-align:middle; margin-right:10px;" />
         ${item.name}
       </td>
-      <td align="center">${item.variant.color}</td>
+      <td align="center">${item.variant_color}</td>
       <td align="center">${item.size}</td>
       <td align="center">${item.quantity}</td>
       <td align="right">₹${item.price * item.quantity}</td>
@@ -194,33 +218,58 @@ htmlContent += `
     res.status(500).json({ success: false, message: "Failed to send email" });
   }
 });
-//fetch all
-router.get("/all",  async (req, res) => {
-  try {
-    
-     const orders = await Order.find();
 
-    res.status(200).json({ success: true, orders });
+
+router.get("/all", async (req, res) => {
+
+  try {
+
+    const { page, limit } = req.query;
+
+    const { pageNumber, pageSize, offset } =
+      getPagination(page, limit);
+
+    const [result] = await pool.query(
+      "CALL get_all_orders(?,?)",
+      [pageSize, offset]
+    );
+
+    const orders = result[0];
+  const total = result[1][0].total;  
+
+    res.status(200).json({
+      success: true,
+      orders,
+      pagination: {
+        page: pageNumber,
+        limit: pageSize,
+      
+         totalPages: Math.ceil(total / pageSize),
+        totalItems: total
+      }
+    });
+
   } catch (error) {
     console.error("FETCH ALL ORDERS ERROR:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
   }
 });
-
-//updarestatus
 router.patch("/updatestatus/:id", async (req, res) => {
   try {
     const { orderStatus } = req.body;
+    const orderId = req.params.id;
 
-    const order = await Order.findById(req.params.id);
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
 
-    order.orderStatus = orderStatus;
-    await order.save();
+    const [result] = await pool.query("CALL update_order_status(?, ?)", [
+      orderId,
+      orderStatus,
+    ]);
 
-    res.json({ success: true, order });
+   
+    res.json({ success: true, message: "Order status updated" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Server error" });
