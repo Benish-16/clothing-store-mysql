@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import authContext from "../context/auth/authContext";
 import "../App.css";
+import Pagination from "../components/Pagination";
+
 
 export default function Product({ category }) {
     const [page, setPage] = useState(1);
@@ -120,27 +122,11 @@ const Wrapper = user?.admin? "main" : "div";
           </button>
         </div>
       )}
-       <div className="d-flex justify-content-center align-items-center mt-3 gap-3">
-  <button
-    className="btn btn-outline-dark"
-    onClick={() => setPage((p) => Math.max(1, p - 1))}
-    disabled={page === 1}
-  >
-    &laquo; Previous
-  </button>
-
-  <span className="fw-bold">
-    Page {page} of {totalPages}
-  </span>
-
-  <button
-    className="btn btn-outline-dark"
-    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-    disabled={page === totalPages}
-  >
-    Next &raquo;
-  </button>
-</div>
+  <Pagination
+       page={page}
+       totalPages={totalPages}
+       onPageChange={setPage}
+     />
 
     </Wrapper>
     

@@ -47,7 +47,7 @@ export default function Navbar() {
           {!localStorage.getItem('token') ? (
             <>
               <Link to="/login" className="btn btn mx-2">Login</Link>
-              <Link to="/signup" className="btn btn-primary mx-2">Signup</Link>
+              <Link to="/signup" className="btn btn mx-2">Signup</Link>
             </>
           ) : (
             <button className="btn btn" onClick={handleLogout}>Logout</button>
@@ -92,7 +92,7 @@ export default function Navbar() {
             {!localStorage.getItem('token') ? (
               <>
                 <Link to="/login" className="btn btn mx-2">Login</Link>
-                <Link to="/signup" className="btn btn-primary mx-2">Signup</Link>
+                <Link to="/signup" className="btn btn mx-2">Signup</Link>
               </>
             ) : (
               <button className="btn btn" onClick={handleLogout}>Logout</button>

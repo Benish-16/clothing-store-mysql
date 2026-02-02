@@ -1,6 +1,6 @@
-/* ===== ENHANCED PRODUCT DETAIL STYLES ===== */
 
-/* Loading State */
+
+
 .loading-container {
   min-height: 60vh;
   display: flex;
@@ -13,7 +13,7 @@
   height: 3rem;
 }
 
-/* Product Image Container */
+
 .product-image-container {
   border-radius: 16px;
   overflow: hidden;
@@ -72,7 +72,7 @@
   color: white !important;
 }
 
-/* Back Button */
+
 .back-button {
   display: inline-flex;
   align-items: center;
@@ -92,7 +92,7 @@
   transform: translateX(-4px);
 }
 
-/* Product Title */
+
 .product-title {
   font-size: 2.5rem;
   font-weight: 700;
@@ -101,7 +101,7 @@
   color: #212529;
 }
 
-/* Product Description */
+
 .product-description {
   font-size: 1.05rem;
   line-height: 1.6;
@@ -109,7 +109,7 @@
   margin-bottom: 1.5rem;
 }
 
-/* Price Display */
+
 .price-container {
   margin-bottom: 1.5rem;
 }
@@ -126,7 +126,7 @@
   color: #6c757d;
 }
 
-/* Section Headers */
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -353,14 +353,14 @@
   margin-bottom: 1rem;
 }
 
-/* Divider */
+
 .section-divider {
   border: none;
   border-top: 1px solid #dee2e6;
   margin: 2rem 0;
 }
 
-/* Product Not Found */
+
 .product-not-found {
   text-align: center;
   padding: 4rem 1rem;
@@ -377,7 +377,6 @@
   margin-bottom: 1.5rem;
 }
 
-/* Responsive Adjustments */
 @media (max-width: 991px) {
   .product-title {
     font-size: 2rem;
